@@ -1,37 +1,40 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-
 import matplotlib.pyplot as plt
+import datetime
 
 # 1. Download Data
-ticker = "AAPL"  # Apple Inc.
-data = yf.download(ticker, start="2020-01-01", end="2023-12-31")
+ticker = "AAPL"
+data = yf.download(ticker, start="2026-02-02", end="2026-03-03")
 
 # 2. Preprocessing
-# We want to predict the 'Close' price based on the day number
+# We use all available data to train since we are heading into the unknown
 data['Date_Ordinal'] = pd.to_datetime(data.index).map(pd.Timestamp.toordinal)
-X = data[['Date_Ordinal']] # Features
-y = data['Close']          # Target
+X = data[['Date_Ordinal']] 
+y = data['Close']
 
-# 3. Split Data (80% Train, 20% Test)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# 4. Initialize and Train Model
+# 3. Train on EVERYTHING (No split, we want maximum data for the future)
 model = LinearRegression()
-model.fit(X_train, y_train)
+model.fit(X, y)
 
-# 5. Predictions
-predictions = model.predict(X_test)
+# 4. Generate Future Dates (e.g., next 30 days)
+last_date = data.index[-1]
+future_dates = [last_date + datetime.timedelta(days=i) for i in range(1, 61)]
+future_ordinals = np.array([d.toordinal() for d in future_dates]).reshape(-1, 1)
+
+# 5. Future Predictions
+future_preds = model.predict(future_ordinals)
 
 # 6. Visualization
-plt.figure(figsize=(10, 6))
-plt.scatter(X_test, y_test, color='black', label='Actual Price')
-plt.plot(X_test, predictions, color='blue', linewidth=3, label='Predicted Line')
-plt.title(f'{ticker} Stock Price Prediction')
-plt.xlabel('Date (Ordinal)')
+plt.figure(figsize=(12, 6))
+plt.plot(data.index, data['Close'], label='Historical Price', color='black')
+plt.plot(future_dates, future_preds, label='Future Forecast', color='red', linestyle='--')
+
+plt.title(f'{ticker} 60-Day Future Forecast')
+plt.xlabel('Date')
 plt.ylabel('Price (USD)')
 plt.legend()
-plt.show()
+plt.grid(True)
+plt.show()  
